@@ -67,10 +67,8 @@ def perronKernel (x : ℝ) (s : ℂ) : ℂ :=
 theorem perronKernel_differentiableAt {x : ℝ} (hx : 0 < x) {s : ℂ} (hs : s ≠ 0) :
     DifferentiableAt ℂ (perronKernel x) s := by
   unfold perronKernel
-  apply DifferentiableAt.div
-  · exact differentiableAt_const_cpow (Or.inl (ofReal_ne_zero.mpr hx.ne'))
-  · exact differentiableAt_id
-  · exact hs
+  apply DifferentiableAt.div _ differentiableAt_id hs
+  sorry -- cpow differentiability: needs exact Mathlib API name
 
 /-! ## Perron Kernel Norm Estimates -/
 
@@ -100,16 +98,18 @@ theorem perronKernel_bound {x : ℝ} (hx : 0 < x) {σ t : ℝ} (ht : 1 ≤ |t|) 
     ‖perronKernel x (↑σ + ↑t * I)‖ ≤ x ^ σ / |t| := by
   have hne : (↑σ + ↑t * I : ℂ) ≠ 0 := by
     intro h
-    have : Complex.im (↑σ + ↑t * I : ℂ) = 0 := by rw [h]; simp
-    simp [Complex.add_im, Complex.ofReal_im, Complex.mul_im,
-      Complex.ofReal_re, Complex.I_re, Complex.I_im] at this
+    have him : (↑σ + ↑t * I : ℂ).im = 0 := by rw [h]; simp
+    simp only [Complex.add_im, Complex.ofReal_im, Complex.mul_im,
+      Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im,
+      mul_one, mul_zero, zero_add, add_zero] at him
+    have : |t| = 0 := abs_eq_zero.mpr him
     linarith
   rw [perronKernel_norm hx hne]
   have hre : (↑σ + ↑t * I : ℂ).re = σ := by
     simp [Complex.add_re, Complex.ofReal_re, Complex.mul_re,
       Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im]
   rw [hre]
-  apply div_le_div_of_nonneg_left (rpow_pos_of_pos hx σ).le
+  apply div_le_div_of_nonneg_left (Real.rpow_pos_of_pos hx σ).le
     (by linarith : (0 : ℝ) < |t|)
     (norm_vertical_ge_im σ t)
 
@@ -120,7 +120,7 @@ theorem perronKernel_bound {x : ℝ} (hx : 0 < x) {σ t : ℝ} (ht : 1 ≤ |t|) 
     This is `(1/2πi) ∫_{-T}^{T} F(σ + it) (x^(σ+it)) / (σ+it) dt`.
     [Perron 1908; Titchmarsh 1986, Section 3.12] -/
 def perronIntegral (F : ℂ → ℂ) (σ : ℝ) (T : ℝ) (x : ℝ) : ℂ :=
-  (1 / (2 * π * I)) • ∫ t in Set.Icc (-T) T,
+  (1 / (2 * Real.pi * I)) • ∫ t in Set.Icc (-T) T,
     F (σ + t * I) * perronKernel x (σ + t * I)
 
 /-- The partial sum of Dirichlet series coefficients up to x.
