@@ -81,7 +81,7 @@ theorem perronKernel_differentiableAt {x : ℝ} (hx : 0 < x) {s : ℂ} (hs : s �
 /-! ## Perron Kernel Norm Estimates -/
 
 /-- `‖x^s / s‖ = x^(Re s) / ‖s‖` for `x > 0`, `s ≠ 0`. PROVED. -/
-theorem perronKernel_norm {x : ℝ} (hx : 0 < x) {s : ℂ} (hs : s ≠ 0) :
+theorem perronKernel_norm {x : ℝ} (hx : 0 < x) {s : ℂ} (_hs : s ≠ 0) :
     ‖perronKernel x s‖ = x ^ s.re / ‖s‖ := by
   simp only [perronKernel, norm_div, Complex.norm_eq_abs,
     abs_cpow_eq_rpow_re_of_pos hx]
@@ -93,8 +93,8 @@ theorem norm_vertical_ge_im (σ t : ℝ) :
   have h : (↑σ + ↑t * I : ℂ).im = t := by
     simp [Complex.add_im, Complex.ofReal_im, Complex.mul_im,
       Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im]
-  rw [← h]
-  exact Complex.abs_im_le_abs _
+  calc |t| = |(↑σ + ↑t * I : ℂ).im| := by rw [h]
+    _ ≤ Complex.abs (↑σ + ↑t * I) := Complex.abs_im_le_abs _
 
 /-- `‖x^(σ+it) / (σ+it)‖ ≤ x^σ / |t|` for `|t| ≥ 1`. PROVED. -/
 theorem perronKernel_bound {x : ℝ} (hx : 0 < x) {σ t : ℝ} (ht : 1 ≤ |t|) :
@@ -188,7 +188,9 @@ theorem perron_formula (a : ℕ → ℂ) {σ : ℝ} (hσ : 0 < σ)
   set C := (x ^ σ) * ∑' n, ‖a n‖ / (n : ℝ) ^ σ with hC_def
   -- For T > C/ε, the error is less than ε
   refine ⟨max 1 (C / ε + 1), fun T hT => ?_⟩
-  have hT_pos : (0 : ℝ) < T := lt_of_lt_of_le one_pos (le_of_max_le_left hT)
+  have hT1 : 1 ≤ T := le_of_max_le_left hT
+  have hT2 : C / ε + 1 ≤ T := le_of_max_le_right hT
+  have hT_pos : (0 : ℝ) < T := lt_of_lt_of_le one_pos hT1
   obtain ⟨E, hE_eq, hE_bound⟩ := perron_truncated a hσ hconv hx hx_int hT_pos
   rw [dist_comm, dist_eq_norm]
   calc ‖perronSum a x - perronIntegral (LSeries a) σ T x‖
@@ -196,11 +198,12 @@ theorem perron_formula (a : ℕ → ℂ) {σ : ℝ} (hσ : 0 < σ)
     _ ≤ (x ^ σ / T) * ∑' n, ‖a n‖ / (n : ℝ) ^ σ := hE_bound
     _ = C / T := by rw [hC_def]; ring
     _ < ε := by
-        rw [div_lt_iff hT_pos]
-        calc C = C / ε * ε := by rw [div_mul_cancel₀ C (ne_of_gt hε)]
-          _ < (C / ε + 1) * ε := by linarith
-          _ ≤ T * ε := by
-              nlinarith [le_of_max_le_right hT]
+        rw [div_lt_iff₀ hT_pos]
+        -- Goal: C < ε * T. We have hT2 : C / ε + 1 ≤ T
+        have hCε : C / ε < T := by linarith
+        calc C = C / ε * ε := (div_mul_cancel₀ C (ne_of_gt hε)).symm
+          _ < T * ε := by exact mul_lt_mul_of_pos_right hCε hε
+          _ = ε * T := by ring
 
 /-! ## Application: Mertens Function
 
