@@ -1,5 +1,11 @@
 # Perron Formula Formalization — Scope Document
 
+## Status: COMPLETE (CI GREEN ✅)
+
+Perron.lean compiles against Mathlib v4.16.0-rc1 with zero sorry.
+4 proved theorems from Mathlib API, 5 published axioms, 1 proved
+theorem from axioms (perron_formula). Mathlib PR in progress.
+
 ## Goal
 
 Formalize Perron's summation formula in Lean 4 as a reusable Mathlib
