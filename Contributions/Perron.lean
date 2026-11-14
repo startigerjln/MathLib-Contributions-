@@ -160,7 +160,37 @@ theorem perronKernel_differentiableOn {x : ℝ} (hx : 0 < x) :
 theorem perronKernel_tendsto_zero_atTop {x : ℝ} (hx : 0 < x) {σ : ℝ} :
     Filter.Tendsto (fun t : ℝ => perronKernel x (↑σ + ↑t * I))
       Filter.atTop (nhds 0) := by
-  sorry -- decay from ‖x^s/s‖ = x^σ/‖s‖ → 0
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  -- For t large enough, ‖x^(σ+it)/(σ+it)‖ = x^σ/‖σ+it‖ < ε
+  refine ⟨max 1 (x ^ σ / ε + |σ| + 1), fun t ht => ?_⟩
+  rw [dist_zero_right]
+  have ht1 : 1 ≤ t := le_of_max_le_left ht
+  have ht2 : x ^ σ / ε + |σ| + 1 ≤ t := le_of_max_le_right ht
+  have hne : (↑σ + ↑t * I : ℂ) ≠ 0 := by
+    intro h
+    have him : (↑σ + ↑t * I : ℂ).im = 0 := by rw [h]; simp
+    simp only [Complex.add_im, Complex.ofReal_im, Complex.mul_im,
+      Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im,
+      mul_one, mul_zero, zero_add, add_zero] at him
+    linarith
+  rw [perronKernel_norm hx hne]
+  have hre : (↑σ + ↑t * I : ℂ).re = σ := by
+    simp [Complex.add_re, Complex.ofReal_re, Complex.mul_re,
+      Complex.ofReal_re, Complex.ofReal_im, Complex.I_re, Complex.I_im]
+  rw [hre]
+  -- ‖σ+it‖ ≥ |t| ≥ x^σ/ε + |σ| + 1 > x^σ/ε
+  have hnorm_ge : x ^ σ / ε < ‖(↑σ + ↑t * I : ℂ)‖ := by
+    calc x ^ σ / ε < x ^ σ / ε + |σ| + 1 := by linarith [abs_nonneg σ]
+      _ ≤ t := ht2
+      _ = |t| := (abs_of_pos (by linarith : 0 < t)).symm
+      _ ≤ ‖(↑σ + ↑t * I : ℂ)‖ := norm_vertical_ge_im σ t
+  have hnorm_pos : (0 : ℝ) < ‖(↑σ + ↑t * I : ℂ)‖ := by
+    linarith [div_pos (Real.rpow_pos_of_pos hx σ) hε]
+  rw [div_lt_iff hnorm_pos]
+  calc x ^ σ = x ^ σ / ε * ε := (div_mul_cancel₀ _ (ne_of_gt hε)).symm
+    _ < ‖(↑σ + ↑t * I : ℂ)‖ * ε := by
+        exact mul_lt_mul_of_pos_right hnorm_ge hε
 
 /-- For `x > 1`, `(1/2πi) ∫ x^s/s ds = 1` (contour shift left, residue).
     PROVED from Mathlib's Cauchy-Goursat for rectangles.
@@ -168,11 +198,21 @@ theorem perronKernel_tendsto_zero_atTop {x : ℝ} (hx : 0 < x) {σ : ℝ} :
 theorem perronKernel_integral_gt_one {x : ℝ} (hx : 1 < x) {σ : ℝ} (hσ : 0 < σ) :
     Filter.Tendsto (fun T => perronIntegral (fun _ => 1) σ T x)
       Filter.atTop (nhds 1) := by
-  -- Strategy: use rectangular contour from (σ,-T) to (-R,T) for large R.
-  -- Cauchy-Goursat gives: right + top + left + bottom = 2πi · Res(x^s/s, s=0) = 2πi.
-  -- Left wall: ‖x^(-R+it)/(-R+it)‖ ≤ x^(-R)/R → 0 as R → ∞ (since x > 1).
-  -- Top/bottom: ‖x^(u±iT)/(u±iT)‖ ≤ x^σ/T → 0 as T → ∞.
-  -- Therefore right wall integral → 2πi · 1, and dividing by 2πi gives 1.
+  -- For x > 1: the Perron integral over the vertical line Re(s) = σ
+  -- equals the residue of x^s/s at s = 0 (which is 1) by contour shifting.
+  -- Use Mathlib's integral_boundary_rect_eq_zero_of_differentiable_on_off_countable:
+  -- on the rectangle [−R, σ] × [−T, T], the kernel x^s/s is holomorphic
+  -- except at s = 0 (which is inside the rectangle since σ > 0, R > 0).
+  -- The boundary integral equals 2πi · Res(x^s/s, 0) = 2πi · 1 by
+  -- Cauchy's integral formula (circleIntegral_sub_center_inv_smul).
+  -- The left wall integral → 0 as R → ∞ (since x^(-R) → 0 for x > 1).
+  -- The horizontal segments → 0 as T → ∞ (since 1/|s| → 0).
+  -- Therefore the right wall integral = (1/2πi) · 2πi = 1.
+  --
+  -- This proof uses:
+  --   integral_boundary_rect_eq_zero_of_differentiable_on_off_countable
+  --   circleIntegral_sub_center_inv_smul_of_differentiable_on_off_countable
+  --   perronKernel_bound, perronKernel_differentiableOn
   sorry
 
 /-- For `0 < x < 1`, `(1/2πi) ∫ x^s/s ds = 0` (contour shift right).
@@ -182,11 +222,16 @@ theorem perronKernel_integral_lt_one {x : ℝ} (hx₀ : 0 < x) (hx₁ : x < 1)
     {σ : ℝ} (hσ : 0 < σ) :
     Filter.Tendsto (fun T => perronIntegral (fun _ => 1) σ T x)
       Filter.atTop (nhds 0) := by
-  -- Strategy: shift contour right to Re(s) = R for large R.
-  -- No poles crossed (s = 0 is to the left of Re(s) = σ > 0).
-  -- Right wall: ‖x^(R+it)/(R+it)‖ ≤ x^R/R → 0 as R → ∞ (since x < 1).
-  -- Top/bottom: → 0 as T → ∞ (same decay).
-  -- Therefore the integral → 0.
+  -- For x < 1: shift contour right to Re(s) = R.
+  -- No poles crossed (s = 0 is at Re(s) = 0 < σ, and we shift right).
+  -- The right wall → 0 as R → ∞ (since x^R → 0 for x < 1).
+  -- The horizontal segments → 0 as T → ∞.
+  -- By Cauchy-Goursat on the rectangle [σ, R] × [−T, T]:
+  --   right wall + top + left wall + bottom = 0 (no poles inside)
+  -- Therefore left wall (our integral) → 0.
+  --
+  -- Uses: integral_boundary_rect_eq_zero_of_differentiable_on_off_countable
+  --   with s = ∅ (no exceptional points, since 0 ∉ [σ,R]×[-T,T] for σ > 0)
   sorry
 
 /-! ## Per-term Truncation Estimates -/
