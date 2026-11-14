@@ -203,7 +203,21 @@ theorem perron_formula (a : ℕ → ℂ) {σ : ℝ} (hσ : 0 < σ)
     {x : ℝ} (hx : 0 < x) (hx_int : ∀ n : ℕ, (n : ℝ) ≠ x) :
     Filter.Tendsto (fun T => perronIntegral (LSeries a) σ T x)
       Filter.atTop (nhds (perronSum a x)) := by
-  sorry
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  -- The constant C = x^σ · Σ ‖a(n)‖/n^σ bounds the error
+  set C := (x ^ σ) * ∑' n, ‖a n‖ / (n : ℝ) ^ σ
+  -- Choose T₀ > max(1, C/ε)
+  obtain ⟨T₀, hT₀⟩ := exists_gt (max 1 (C / ε))
+  refine ⟨T₀, fun T hT => ?_⟩
+  have hT_pos : (0 : ℝ) < T := lt_of_lt_of_le (lt_of_lt_of_le one_pos (le_max_left 1 _))
+    (le_of_lt (lt_of_lt_of_le hT₀ hT))
+  obtain ⟨E, hE_eq, hE_bound⟩ := perron_truncated a hσ hconv hx hx_int hT_pos
+  rw [dist_comm, dist_eq_norm, hE_eq, add_sub_cancel_left]
+  calc ‖E‖ ≤ (x ^ σ / T) * ∑' n, ‖a n‖ / (n : ℝ) ^ σ := hE_bound
+    _ = C / T := by ring
+    _ < C / T₀ := by sorry -- div_lt_div from T > T₀
+    _ ≤ ε := by sorry -- from T₀ > C/ε
 
 /-! ## Application: Mertens Function
 
